@@ -268,6 +268,7 @@ if (matchingRole) {
 
   client.setLevel.run(level);
   updateUserJSON(message.guild.id);
+  await updateUserJSONOnGitHub(guild.id)
   updateUserJSONOnGitHub(message.guild.id);
   talkedRecently.set(message.author.id, Date.now() + 10 * 1000);
   setTimeout(() => talkedRecently.delete(message.author.id), 10 * 1000);
