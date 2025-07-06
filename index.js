@@ -252,7 +252,7 @@ const addLevelCommand = {
   }
 };
 
-const addLevelCommand = {
+const helpCommand = {
   data: new SlashCommandBuilder()
     .setName('help')
     .setDescription('Display help information for all commands or a specific command')
@@ -312,7 +312,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const SQLite = require('better-sqlite3');
 const sql = new SQLite('./mainDB.sqlite');
 
-const addLevelCommand = {
+const leaderboardCommand = {
   data: new SlashCommandBuilder()
     .setName('leaderboard')
     .setDescription('Check top users with the most XP and the highest level'),
@@ -412,7 +412,7 @@ const CHANNEL_ID = '1014249897756729454';
 const ROLE_ID = '964096791178010635';
 const OWNER_ID = '707124653482836009';
 
-const addLevelCommand = {
+const lifeAdviceCommand = {
   data: new SlashCommandBuilder()
     .setName('life-advice')
     .setDescription('Owner-only: Posts a provided photo URL to a specific channel.')
@@ -454,7 +454,7 @@ const addLevelCommand = {
 const SQLite = require('better-sqlite3');
 const sql = new SQLite('./mainDB.sqlite');
 
-const addLevelCommand = {
+const setPrefixCommand = {
   data: new SlashCommandBuilder()
     .setName('set-prefix')
     .setDescription('Set a custom server prefix for commands')
@@ -484,11 +484,10 @@ const addLevelCommand = {
     return interaction.reply(`✅ Server prefix is now set to \`${newPrefix}\``);
   }
 };
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const SQLite = require('better-sqlite3');
+
 const sql = new SQLite('./mainDB.sqlite');
 
-const addLevelCommand = {
+const rankCommand = {
   data: new SlashCommandBuilder()
     .setName('rank')
     .setDescription("Check a user's rank and XP")
@@ -543,7 +542,7 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('disc
 const SQLite = require('better-sqlite3');
 const sql = new SQLite('./mainDB.sqlite');
 
-const addLevelCommand = {
+const removeLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('remove-level')
     .setDescription('Remove or decrease level from a specified user')
@@ -599,7 +598,7 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const SQLite = require('better-sqlite3');
 const sql = new SQLite('./mainDB.sqlite');
 
-const addLevelCommand = {
+const resetRankCommand = {
   data: new SlashCommandBuilder()
     .setName('resetrank')
     .setDescription('Resets the rank (level and XP) of everyone in the server.')
@@ -628,7 +627,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const SQLite = require('better-sqlite3');
 const sql = new SQLite('./mainDB.sqlite');
 
-const addLevelCommand = {
+const roleLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('role-level')
     .setDescription('Manage role rewards for specific levels')
@@ -738,7 +737,7 @@ const client = new Client({
   ]
 });
 
-const addLevelCommand = {
+const setLevelCommand = {
     name: 'set-level',
     aliases: ['levelset'],
     category: "Leveling",
@@ -788,7 +787,7 @@ const addLevelCommand = {
 }const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
-const addLevelCommand = {
+const zukoYoutubeCommand = {
   data: new SlashCommandBuilder()
     .setName('zukoyoutube')
     .setDescription('Fetch the latest YouTube video from Uncle Iroh\'s channel'),
@@ -868,6 +867,17 @@ const addLevelCommand = {
 // Initialiser la collection des commandes si ce n’est pas déjà fait
 if (!client.commands) client.commands = new Collection();
 client.commands.set(addLevelCommand.data.name, addLevelCommand);
+client.commands.set(helpCommand.data.name, helpCommand);
+client.commands.set(leaderboardCommand.data.name, leaderboardCommand);
+client.commands.set(lifeAdviceCommand.data.name, lifeAdviceCommand);
+client.commands.set(setPrefixCommand.data.name, setPrefixCommand);
+client.commands.set(rankCommand.data.name, rankCommand);
+client.commands.set(removeLevelCommand.data.name, removeLevelCommand);
+client.commands.set(resetRankCommand.data.name, resetRankCommand);
+client.commands.set(roleLevelCommand.data.name, roleLevelCommand);
+client.commands.set(setLevelCommand.data.name, setLevelCommand);
+client.commands.set(zukoYoutubeCommand.data.name, zukoYoutubeCommand);
+
 
 // Gérer les interactions pour SlashCommands
 client.on(Events.InteractionCreate, async interaction => {
