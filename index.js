@@ -13,75 +13,6 @@ const SQLite = require('better-sqlite3');
 const fetch = require('node-fetch');
 const config = require('./config.json');
 
-async function updateUserJSONOnGitHub(guildId) {
-  const users = sql
-    .prepare("SELECT * FROM levels WHERE guild = ? ORDER BY totalXP DESC")
-    .all(guildId);
-  if (!users.length) return;
-
-  const leaderboard = users.map((entry, i) => {
-    const nextXP = entry.level * 2 * 250 + 250;
-    return {
-      rank: i + 1,
-      userId: entry.user,
-      level: entry.level,
-      xp: entry.xp,
-      totalXP: entry.totalXP,
-      nextXP
-    };
-  });
-
-  const content = Buffer.from(JSON.stringify(leaderboard, null, 2)).toString('base64');
-  const repo = 'iroh8619/princezuko-bot';
-  const path = 'users.json';
-  const token = process.env.GITHUB_TOKEN;
-
-  try {
-    const gitRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
-    });
-    const { sha } = await gitRes.json();
-
-    await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-      method: 'PUT',
-      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' },
-      body: JSON.stringify({ message: 'Update users.json', content, sha })
-    });
-    console.log('✅ users.json pushed to GitHub');
-  } catch (err) {
-    console.error('❌ GitHub sync failed:', err);
-  }
-}
-
-async function restoreSQLiteFromGitHub() {
-  const repo = 'iroh8619/princezuko-bot';
-  const file = 'users.json';
-  const token = process.env.GITHUB_TOKEN;
-
-  try {
-    const response = await fetch(`https://api.github.com/repos/${repo}/contents/${file}`, {
-      headers: {
-        Authorization: `token ${token}`,
-        Accept: 'application/vnd.github.v3.raw'
-      }
-    });
-
-    const data = await response.json();
-    const users = Array.isArray(data) ? data : JSON.parse(data);
-
-    const stmt = sql.prepare('INSERT OR REPLACE INTO levels (id, user, guild, xp, level, totalXP) VALUES (?, ?, ?, ?, ?, ?)');
-
-    for (const u of users) {
-      const id = `${u.userId}-905876133151637575`;
-      stmt.run(id, u.userId, '905876133151637575', u.xp, u.level, u.totalXP);
-    }
-
-    console.log('✅ Database restored from GitHub users.json');
-  } catch (err) {
-    console.error('❌ Failed to restore database from GitHub:', err.message);
-  }
-}
-
 
 const sql = new SQLite('./mainDB.sqlite');
 const app = express();
@@ -130,17 +61,8 @@ function initializeDatabase() {
 }
 
 
-client.once(Events.ClientReady, async () => {
+client.once(Events.ClientReady, () => {
   console.log(`Logged in as ${client.user.tag}`);
-
-  const row = sql.prepare("SELECT COUNT(*) AS count FROM levels").get();
-  if (row.count === 0) {
-    console.log("🔁 Restoring levels from GitHub...");
-    await restoreSQLiteFromGitHub();
-  }
-
-  initializeDatabase();
-
   
    const activities = [
     { name: 'Uncle making tea', type: 3 },
@@ -161,6 +83,7 @@ client.once(Events.ClientReady, async () => {
   // Set initial activity and then alternate every 10 seconds
   updateActivity();
   setInterval(updateActivity, 10000);
+  initializeDatabase();
 });
 
 // Slash Command Handling
@@ -170,18 +93,692 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!command) return;
 
   try {
-    await interaction.deferReply(); // ✅ tout de suite
     await command.execute(interaction, sql);
-  } catch (err) {
-    console.error(err);
-    await interaction.editReply({
-      content: 'An error occurred while executing the command. Please try again later.',
-      ephemeral: true
-    });
+  } catch (error) {
+    console.error(error);
+    await interaction.reply({ content: 'There was an error executing this command.', ephemeral: true });
   }
 });
 
 const fs = require('fs');
+
+// ==== Commandes fusionnées depuis commands.js ====
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('add-level')
+    .setDescription('Give or add a level to a specified user')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to give levels to')
+        .setRequired(true)
+    )
+    .addIntegerOption(option =>
+      option.setName('amount')
+        .setDescription('Amount of levels to add')
+        .setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+  async execute(interaction) {
+    const user = interaction.options.getMember('user');
+    const levelArgs = interaction.options.getInteger('amount');
+
+    if (!user) {
+      return interaction.reply({ content: 'Please specify a valid user.', ephemeral: true });
+    }
+
+    if (isNaN(levelArgs) || levelArgs < 1) {
+      return interaction.reply({ content: 'Please provide a valid positive number.', ephemeral: true });
+    }
+
+    const getScore = sql.prepare("SELECT * FROM levels WHERE user = ? AND guild = ?");
+    const setScore = sql.prepare("INSERT OR REPLACE INTO levels (id, user, guild, xp, level, totalXP) VALUES (@id, @user, @guild, @xp, @level, @totalXP);");
+
+    let score = getScore.get(user.id, interaction.guild.id);
+    if (!score) {
+      score = {
+        id: `${interaction.guild.id}-${user.id}`,
+        user: user.id,
+        guild: interaction.guild.id,
+        xp: 0,
+        level: 0,
+        totalXP: 0
+      };
+    }
+
+    score.level += levelArgs;
+    const newTotalXP = (levelArgs - 1) * 2 * 250 + 250;
+    score.totalXP += newTotalXP;
+
+    setScore.run(score);
+
+    const embed = new EmbedBuilder()
+      .setTitle('✅ Success!')
+      .setDescription(`Successfully added **${levelArgs}** level(s) to ${user.toString()}!`)
+      .setColor('Random');
+
+    return interaction.reply({ embeds: [embed] });
+  }
+};
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Display help information for all commands or a specific command')
+    .addStringOption(option =>
+      option.setName('command')
+        .setDescription('Get detailed info about a specific command')
+        .setRequired(false)
+    ),
+
+  async execute(interaction) {
+    const input = interaction.options.getString('command');
+    const commands = interaction.client.commands;
+
+    if (!input) {
+      const helpEmbed = new EmbedBuilder()
+        .setColor('Random')
+        .setAuthor({ name: `${interaction.guild.name} Help Menu`, iconURL: interaction.guild.iconURL() })
+        .addFields(
+          {
+            name: 'Leveling Commands',
+            value: '`/rank`, `/resetrank`, `/leaderboard`, `/role-level`, `/add-level`'
+          },
+          {
+            name: 'Configuration Commands',
+            value: '`/set-prefix`'
+          }
+        )
+        .setTimestamp()
+        .setFooter({ text: '<> is mandatory, [] is optional' });
+
+      return interaction.reply({ embeds: [helpEmbed], ephemeral: true });
+    }
+
+    const name = input.toLowerCase();
+    const command = commands.get(name);
+
+    if (!command) {
+      return interaction.reply({ content: `That’s not a valid command!`, ephemeral: true });
+    }
+
+    const detailsEmbed = new EmbedBuilder()
+      .setTitle(command.data.name.charAt(0).toUpperCase() + command.data.name.slice(1))
+      .setColor('Random')
+      .setDescription([
+        `**Command Name**: ${command.data.name}`,
+        `**Description**: ${command.data.description || 'None'}`,
+        `**Category**: ${command.category || 'General'}`,
+        `**Aliases**: ${command.aliases ? command.aliases.join(', ') : 'None'}`,
+        `**Cooldown**: ${command.cooldown || 'None'}`
+      ].join('\n'))
+      .setFooter({ text: 'Help command' });
+
+    return interaction.reply({ embeds: [detailsEmbed], ephemeral: true });
+  }
+};
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('leaderboard')
+    .setDescription('Check top users with the most XP and the highest level'),
+
+  async execute(interaction) {
+    const top10 = sql.prepare("SELECT * FROM levels WHERE guild = ? ORDER BY totalXP DESC;").all(interaction.guild.id);
+
+    if (top10.length < 1) {
+      return interaction.reply({ content: 'The leaderboard is empty! Start earning XP to appear here.', ephemeral: true });
+    }
+
+    const totalPages = Math.ceil(top10.length / 10);
+    let currentPage = 1;
+
+const buildEmbed = async (page) => {
+  const start = (page - 1) * 10;
+  const end = start + 10;
+  const pageData = top10.slice(start, end);
+
+  const embed = new EmbedBuilder()
+    .setTitle(`${interaction.guild.name} Server Ranking`)
+    .setColor('Random')
+    .setThumbnail('https://i.imghippo.com/files/YfWD3097aY.png')
+    .setFooter({ text: `Page ${page} / ${totalPages}` })
+    .setTimestamp();
+
+  for (const [index, entry] of pageData.entries()) {
+    const userId = entry.user;
+    const nextXP = entry.level * 2 * 250 + 250;
+    const rank = start + index + 1;
+
+    let displayName;
+    try {
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      displayName = member.displayName;
+    } catch {
+      displayName = `<@${userId}>`; // fallback to mention
+    }
+
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🏅';
+
+    embed.addFields({
+      name: `${medal} ${rank}. ${displayName}`,
+      value: `- **Level**: ${entry.level}\n- **XP**: ${entry.xp} / ${nextXP}`
+    });
+  }
+
+  return embed;
+};
+
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('prev').setLabel('⬅️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('next').setLabel('➡️').setStyle(ButtonStyle.Primary)
+    );
+
+    const message = await interaction.reply({
+      embeds: [await buildEmbed(currentPage)],
+      components: totalPages > 1 ? [row] : [],
+      fetchReply: true,
+      ephemeral: false
+    });
+
+    if (totalPages <= 1) return;
+
+    const collector = message.createMessageComponentCollector({
+      time: 60000,
+      filter: i => i.user.id === interaction.user.id
+    });
+
+    collector.on('collect', async i => {
+      if (i.customId === 'prev' && currentPage > 1) currentPage--;
+      if (i.customId === 'next' && currentPage < totalPages) currentPage++;
+
+      await i.update({
+        embeds: [await buildEmbed(currentPage)],
+        components: [row]
+      });
+    });
+
+    collector.on('end', async () => {
+      if (message.editable) {
+        await message.edit({ components: [] });
+      }
+    });
+  }
+};const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
+
+const SENTENCES = [
+  "Here's something for you!",
+  "A moment captured in pixels.",
+  "From the gallery with love.",
+  "Smile! 📸",
+];
+
+const CHANNEL_ID = '1014249897756729454';
+const ROLE_ID = '964096791178010635';
+const OWNER_ID = '707124653482836009';
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('life-advice')
+    .setDescription('Owner-only: Posts a provided photo URL to a specific channel.')
+    .addStringOption(option =>
+      option.setName('url')
+        .setDescription('Direct image URL to post')
+        .setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  async execute(interaction) {
+    if (interaction.user.id !== OWNER_ID) {
+      return interaction.reply({ content: "❌ You don't have permission to use this command.", ephemeral: true });
+    }
+
+    const imageUrl = interaction.options.getString('url');
+    const randomSentence = SENTENCES[Math.floor(Math.random() * SENTENCES.length)];
+
+    const targetChannel = await interaction.client.channels.fetch(CHANNEL_ID);
+    if (!targetChannel || targetChannel.type !== 0) {
+      return interaction.reply({ content: "❌ Target channel not found or invalid.", ephemeral: true });
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+      await targetChannel.send({
+        content: `<@&${ROLE_ID}> ${randomSentence}`,
+        files: [{ attachment: imageUrl }]
+      });
+
+      return interaction.editReply({ content: "✅ Your photo has been sent to the channel!" });
+    } catch (err) {
+      console.error("Send failed:", err);
+      return interaction.editReply({ content: "❌ Failed to send the photo." });
+    }
+  }
+};const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('set-prefix')
+    .setDescription('Set a custom server prefix for commands')
+    .addStringOption(option =>
+      option.setName('prefix')
+        .setDescription('The new prefix to use')
+        .setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+  async execute(interaction) {
+    const newPrefix = interaction.options.getString('prefix');
+    const guildId = interaction.guild.id;
+
+    const currentPrefix = sql.prepare("SELECT serverprefix FROM prefix WHERE guild = ?").get(guildId)?.serverprefix;
+
+    if (!newPrefix) {
+      return interaction.reply({ content: 'Please provide a new prefix.', ephemeral: true });
+    }
+
+    if (newPrefix === currentPrefix) {
+      return interaction.reply({ content: 'That prefix is already in use. Please provide a new one.', ephemeral: true });
+    }
+
+    sql.prepare("INSERT OR REPLACE INTO prefix (serverprefix, guild) VALUES (?, ?);").run(newPrefix, guildId);
+
+    return interaction.reply(`✅ Server prefix is now set to \`${newPrefix}\``);
+  }
+};
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('rank')
+    .setDescription("Check a user's rank and XP")
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to check rank for')
+        .setRequired(false)
+    ),
+
+  async execute(interaction) {
+    try {
+      const target = interaction.options.getMember('user') || interaction.member;
+
+      const getScore = sql.prepare("SELECT * FROM levels WHERE user = ? AND guild = ?");
+      const score = getScore.get(target.id, interaction.guild.id);
+
+      if (!score) {
+        return interaction.reply({ content: `${target.displayName} has no XP yet!`, ephemeral: true });
+      }
+
+      const topUsers = sql.prepare("SELECT * FROM levels WHERE guild = ? ORDER BY totalXP DESC").all(interaction.guild.id);
+      const rank = topUsers.findIndex(u => u.user === target.id) + 1;
+
+      const level = score.level;
+      const nextXP = level * 2 * 250 + 250;
+
+      const embed = new EmbedBuilder()
+        .setColor('#FFD700')
+        .setAuthor({
+          name: target.displayName || target.user.username,
+          iconURL: target.displayAvatarURL({ dynamic: true })
+        })
+        .setTitle('🏅 Rank Information')
+        .addFields(
+          { name: 'Level', value: level.toString(), inline: true },
+          { name: 'XP', value: `${score.xp} / ${nextXP}`, inline: true },
+          { name: 'Rank', value: `#${rank}`, inline: true }
+        )
+        .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
+        .setFooter({ text: `Server: ${interaction.guild.name}`, iconURL: interaction.guild.iconURL({ dynamic: true }) })
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
+
+    } catch (error) {
+      console.error("An error occurred in the rank command:", error);
+      interaction.reply({ content: "An error occurred while fetching the rank. Please try again later.", ephemeral: true });
+    }
+  }
+};
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('remove-level')
+    .setDescription('Remove or decrease level from a specified user')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('The user to remove levels from')
+        .setRequired(true)
+    )
+    .addIntegerOption(option =>
+      option.setName('amount')
+        .setDescription('The number of levels to remove')
+        .setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+  async execute(interaction) {
+    const user = interaction.options.getMember('user');
+    const levelToRemove = interaction.options.getInteger('amount');
+
+    if (!user) {
+      return interaction.reply({ content: 'Please mention a valid user.', ephemeral: true });
+    }
+
+    if (isNaN(levelToRemove) || levelToRemove < 1) {
+      return interaction.reply({ content: 'Please provide a valid level amount to remove.', ephemeral: true });
+    }
+
+    const getScore = sql.prepare("SELECT * FROM levels WHERE user = ? AND guild = ?");
+    const setScore = sql.prepare("INSERT OR REPLACE INTO levels (id, user, guild, xp, level, totalXP) VALUES (@id, @user, @guild, @xp, @level, @totalXP);");
+
+    let score = getScore.get(user.id, interaction.guild.id);
+    if (!score) {
+      return interaction.reply({ content: 'This user does not have any XP or levels yet.', ephemeral: true });
+    }
+
+    if (score.level - levelToRemove < 1) {
+      return interaction.reply({ content: 'You cannot remove levels that result in less than level 1.', ephemeral: true });
+    }
+
+    score.level -= levelToRemove;
+    score.totalXP -= (levelToRemove - 1) * 2 * 250 + 250;
+    setScore.run(score);
+
+    const embed = new EmbedBuilder()
+      .setTitle('✅ Success!')
+      .setDescription(`Successfully removed **${levelToRemove}** level(s) from ${user.toString()}!`)
+      .setColor('Random');
+
+    return interaction.reply({ embeds: [embed] });
+  }
+};
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('resetrank')
+    .setDescription('Resets the rank (level and XP) of everyone in the server.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  async execute(interaction) {
+    const guildId = interaction.guild.id;
+
+    try {
+      // Reset all levels and XP
+      const reset = sql.prepare("UPDATE levels SET xp = 0, level = 0, totalXP = 0 WHERE guild = ?");
+      reset.run(guildId);
+
+      // Optionally clean up zeroed entries
+      const cleanup = sql.prepare("DELETE FROM levels WHERE guild = ? AND xp = 0 AND level = 0 AND totalXP = 0");
+      cleanup.run(guildId);
+
+      await interaction.reply('✅ All ranks in this server have been successfully reset!');
+    } catch (error) {
+      console.error("Error resetting ranks:", error);
+      await interaction.reply({ content: '❌ There was an error resetting the ranks. Please try again later.', ephemeral: true });
+    }
+  }
+};
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('role-level')
+    .setDescription('Manage role rewards for specific levels')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles | PermissionFlagsBits.ManageGuild)
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('add')
+        .setDescription('Set a role to be rewarded at a specific level')
+        .addIntegerOption(option =>
+          option.setName('level')
+            .setDescription('The level to assign the role')
+            .setRequired(true))
+        .addRoleOption(option =>
+          option.setName('role')
+            .setDescription('The role to assign')
+            .setRequired(true)))
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('remove')
+        .setDescription('Remove a role reward at a specific level')
+        .addIntegerOption(option =>
+          option.setName('level')
+            .setDescription('The level to remove the role reward from')
+            .setRequired(true)))
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('show')
+        .setDescription('Show all level-based role rewards')),
+
+  async execute(interaction) {
+    const sub = interaction.options.getSubcommand();
+    const guildId = interaction.guild.id;
+
+    if (sub === 'add') {
+      const level = interaction.options.getInteger('level');
+      const role = interaction.options.getRole('role');
+
+      if (level < 1) {
+        return interaction.reply({ content: 'Please provide a valid level (1 or higher).', ephemeral: true });
+      }
+
+      const getRole = sql.prepare("SELECT * FROM roles WHERE guildID = ? AND level = ?");
+      const existing = getRole.get(guildId, level);
+
+      const setRole = sql.prepare("INSERT OR REPLACE INTO roles (guildID, roleID, level) VALUES (?, ?, ?)");
+      setRole.run(guildId, role.id, level);
+
+      const action = existing ? 'updated' : 'set';
+      const embed = new EmbedBuilder()
+        .setTitle(`✅ Role ${action}`)
+        .setDescription(`${role} has been ${action} for level ${level}.`)
+        .setColor('Random');
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    if (sub === 'remove') {
+      const level = interaction.options.getInteger('level');
+      const getLevel = sql.prepare("SELECT * FROM roles WHERE guildID = ? AND level = ?");
+      const found = getLevel.get(guildId, level);
+
+      if (!found) {
+        return interaction.reply({ content: 'There is no role set for that level.', ephemeral: true });
+      }
+
+      const del = sql.prepare("DELETE FROM roles WHERE guildID = ? AND level = ?");
+      del.run(guildId, level);
+
+      const embed = new EmbedBuilder()
+        .setTitle('✅ Role Removed')
+        .setDescription(`Role reward for level ${level} has been removed.`)
+        .setColor('Random');
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    if (sub === 'show') {
+      const all = sql.prepare("SELECT * FROM roles WHERE guildID = ?").all(guildId);
+
+      if (!all.length) {
+        return interaction.reply({ content: 'There are no level-role rewards set in this server.', ephemeral: true });
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${interaction.guild.name} Level Roles`)
+        .setDescription('Use `/role-level add` to set new ones or `/role-level remove` to delete.')
+        .setColor('Random');
+
+      all.forEach(row => {
+        embed.addFields({ name: `Level ${row.level}`, value: `<@&${row.roleID}>`, inline: true });
+      });
+
+      return interaction.reply({ embeds: [embed] });
+    }
+  }
+};
+const Discord = require("discord.js");
+const SQlite = require("better-sqlite3");
+const sql = new SQlite('./mainDB.sqlite');
+const { Client, GatewayIntentBits } = require("discord.js");
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers
+  ]
+});
+
+const commands = {
+    name: 'set-level',
+    aliases: ['levelset'],
+    category: "Leveling",
+    description: "Set user Level and XP",
+    cooldown: 3,
+    async execute (message, args) {
+        let userArray = message.content.split(" ");
+        let userArgs = userArray.slice(1);
+        let user = message.mentions.members.first() || message.guild.members.cache.get(userArgs[0]) || message.guild.members.cache.find(x => x.user.username.toLowerCase() === userArgs.slice(0).join(" ") || x.user.username === userArgs[0])
+
+        if(!message.member.hasPermission("MANAGE_GUILD")) return message.reply(`You do not have permission to use this command!`);
+
+        const levelArgs = parseInt(args[1])
+
+        client.getScore = sql.prepare("SELECT * FROM levels WHERE user = ? AND guild = ?");
+        client.setScore = sql.prepare("INSERT OR REPLACE INTO levels (id, user, guild, xp, level, totalXP) VALUES (@id, @user, @guild, @xp, @level, @totalXP);");
+        if(!user) {
+            return message.reply(`Please mention a user!`)
+        } else {
+            if(isNaN(levelArgs) || levelArgs < 1) {
+                return message.reply(`Please provide a valid number!`)
+            } else {
+                let score = client.getScore.get(user.id, message.guild.id);
+                if(!score) {
+                    score = {
+                        id: `${message.guild.id}-${user.id}`,
+                        user: user.id,
+                        guild: message.guild.id,
+                        xp: 0,
+                        level: 0,
+                        totalXP: 0
+                    }
+                }
+                score.level = levelArgs
+                const newTotalXP = levelArgs - 1
+                let embed = new Discord.MessageEmbed()
+                .setTitle(`Success!`)
+                .setDescription(`Successfully set ${levelArgs} level for ${user.toString()}!`)
+                .setColor("RANDOM");
+                score.totalXP = newTotalXP * 2 * 250 + 250
+                score.xp = 0
+                client.setScore.run(score)
+                return message.channel.send(embed)
+            }
+        }
+    }
+}const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const fetch = require('node-fetch');
+
+const commands = {
+  data: new SlashCommandBuilder()
+    .setName('zukoyoutube')
+    .setDescription('Fetch the latest YouTube video from Uncle Iroh\'s channel'),
+
+  async execute(interaction) {
+    const apiKey = 'AIzaSyB0Xm35jREkbxfa4l7vpcJ4gOFXa4x1y2o'; // Replace with your YouTube API key
+    const channelId = 'UC5VgXW1vFTnQCi5szh7R-qw'; // Replace with your channel ID
+    const url = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet,id&order=date&maxResults=1`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data.items || !data.items.length) {
+        return interaction.reply('No recent videos found.');
+      }
+
+      const video = data.items[0];
+      const videoId = video.id.videoId;
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+      const introMessages = [
+  "<@&964096937630498859> Uncle Iroh said something again. It’s probably deep. I guess you should watch it. 🔥",
+  "<@&964096937630498859> I’m not saying he’s right *all the time*... but this one actually made sense. Check it out. 🍵",
+  "<@&964096937630498859> Great. More Iroh wisdom. Because *clearly* we all need guidance or whatever. 🎴",
+  "<@&964096937630498859> Uncle said this could help someone. So if you're a disaster like me, maybe it's for you. 🔥",
+  "<@&964096937630498859> Iroh dropped another gem. He didn’t say it was optional. Just watch it. ✨",
+  "<@&964096937630498859> Look, if ignoring him worked, I’d do it. It doesn’t. Here's the video. 🍵",
+  "<@&964096937630498859> Iroh said you should watch this. I didn’t argue. I’ve learned my lesson. 🔥",
+  "<@&964096937630498859> New Iroh wisdom just came in. I don’t *get* it yet... but maybe you will. 🎴",
+  "<@&964096937630498859> He said this one was ‘important for your inner peace.’ Sounds like a trap. Click it. ✨",
+  "<@&964096937630498859> Iroh keeps talking and somehow it keeps helping. Watch this before I change my mind. 🍵",
+  "<@&964096937630498859> Another day, another life lesson from the old firebender. Don’t ignore it. Trust me. 🔥",
+  "<@&964096937630498859> Uncle made me send this. Apparently *everyone* needs to hear it. Even you. ✨",
+  "<@&964096937630498859> This video might just fix you. Or confuse you. Either way, Uncle said watch it. 🍵",
+  "<@&964096937630498859> If you’ve messed something up recently, this might help. Iroh’s words, not mine. 🔥",
+  "<@&964096937630498859> New wisdom update from the tea philosopher himself. You know what to do. ✨",
+  "<@&964096937630498859> Don’t roll your eyes—it’s actually good. Iroh dropped another one. 🍵",
+  "<@&964096937630498859> You don't have to listen to him... but why wouldn't you? He’s literally never wrong. 🔥",
+  "<@&964096937630498859> This one's short but powerful. Kinda like the time Iroh made me cry over soup. Watch it. ✨",
+  "<@&964096937630498859> Iroh’s been thinking again. The result? This. You’re welcome. 🍵",
+  "<@&964096937630498859> Another quiet punch to the soul from Uncle Iroh. Watch it and feel things. 🔥",
+  "<@&964096937630498859> Iroh said if I *don’t* send this, I’ll regret it. So here. Video. Now. ✨",
+  "<@&964096937630498859> Even if you think you’ve got it all figured out, just… listen to Uncle. Trust me. 🍵",
+  "<@&964096937630498859> This one's about peace or destiny or... something big. Just click it before I overthink. 🔥",
+  "<@&964096937630498859> Uncle’s at it again. Dropping advice like it’s hot tea. Try not to spill it. ✨",
+  "<@&964096937630498859> Not everything he says makes sense at first. But this? This one hit different. Watch it. 🍵"
+      ];
+      const intro = introMessages[Math.floor(Math.random() * introMessages.length)];
+
+      const embed = new EmbedBuilder()
+        .setTitle(video.snippet.title)
+        .setDescription(video.snippet.description || 'No description provided.')
+        .setURL(videoUrl)
+        .setImage(video.snippet.thumbnails.high.url)
+        .setColor('#FF0000')
+        .setTimestamp();
+
+      await interaction.reply(intro);
+      await interaction.followUp({ embeds: [embed] });
+
+      // Send reminder to another channel
+      const reminderChannelId = '1014249897756729454';
+      const reminderChannel = interaction.guild.channels.cache.get(reminderChannelId);
+      if (reminderChannel) {
+        reminderChannel.send("✍️ Hey <@707124653482836009>, don't forget to write a <#1103963545978273842> today. Uncle would be proud.");
+      }
+
+    } catch (err) {
+      console.error('YouTube API error:', err);
+      return interaction.reply({ content: '❌ Could not fetch the video. Please try again later.', ephemeral: true });
+    }
+  }
+};
+
+
 
 function updateUserJSON(guildId) {
   const users = sql.prepare("SELECT * FROM levels WHERE guild = ? ORDER BY totalXP DESC").all(guildId);
@@ -280,7 +877,6 @@ if (matchingRole) {
 
   client.setLevel.run(level);
   updateUserJSON(message.guild.id);
-  await updateUserJSONOnGitHub(message.guild.id);
   talkedRecently.set(message.author.id, Date.now() + 10 * 1000);
   setTimeout(() => talkedRecently.delete(message.author.id), 10 * 1000);
 });
