@@ -59,7 +59,7 @@ const buildEmbed = async (page) => {
       new ButtonBuilder().setCustomId('next').setLabel('➡️').setStyle(ButtonStyle.Primary)
     );
 
-    const message = await interaction.reply({
+    const message = await interaction.editReply({
       embeds: [await buildEmbed(currentPage)],
       components: totalPages > 1 ? [row] : [],
       fetchReply: true,
