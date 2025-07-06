@@ -1,33 +1,39 @@
-const { ReadableStream } = require('web-streams-polyfill');
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, Collection, Events, EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { readdirSync } = require('fs');
 const { join } = require('path');
 const express = require('express');
 const SQLite = require('better-sqlite3');
 const fetch = require('node-fetch');
 const config = require('./config.json');
-  const command = require(`./commands/${file}`);
+
+// Fix pour ReadableStream si nécessaire
 if (typeof ReadableStream === 'undefined') {
+  const { ReadableStream } = require('web-streams-polyfill');
   global.ReadableStream = ReadableStream;
 }
 
-
-
-
-
-
+// Express server (pour Render ou uptime)
+const app = express();
+const port = process.env.PORT || 3000;
 app.get('/', (_, res) => res.send('Bot is alive!'));
 app.listen(port, () => console.log(`Web server listening on port ${port}`));
 
+// Discord client
+const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers
   ],
-  partials: [Partials.Message, Partials.Channel, Partials.Reaction]
+  partials: [
+    Partials.Message,
+    Partials.Channel,
+    Partials.Reaction
+  ]
 });
 
+// Initialisation des commandes
 client.commands = new Collection();
 
 
