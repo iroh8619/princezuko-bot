@@ -1,6 +1,7 @@
-const { Client, GatewayIntentBits, Partials, Collection, Events, EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, Collection, Events, EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
 const { readdirSync } = require('fs');
 const { join } = require('path');
+const Discord = require("discord.js");
 const express = require('express');
 const SQLite = require('better-sqlite3');
 const fetch = require('node-fetch');
@@ -398,7 +399,7 @@ const buildEmbed = async (page) => {
       }
     });
   }
-};const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
+};
 
 const SENTENCES = [
   "Here's something for you!",
@@ -449,9 +450,8 @@ const lifeAdviceCommand = {
       return interaction.editReply({ content: "❌ Failed to send the photo." });
     }
   }
-};const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
+};
+
 
 const setPrefixCommand = {
   data: new SlashCommandBuilder()
@@ -484,7 +484,6 @@ const setPrefixCommand = {
   }
 };
 
-const sql = new SQLite('./mainDB.sqlite');
 
 const rankCommand = {
   data: new SlashCommandBuilder()
@@ -537,9 +536,6 @@ const rankCommand = {
     }
   }
 };
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
 
 const removeLevelCommand = {
   data: new SlashCommandBuilder()
@@ -593,9 +589,7 @@ const removeLevelCommand = {
     return interaction.reply({ embeds: [embed] });
   }
 };
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
+
 
 const resetRankCommand = {
   data: new SlashCommandBuilder()
@@ -622,9 +616,7 @@ const resetRankCommand = {
     }
   }
 };
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
+
 
 const roleLevelCommand = {
   data: new SlashCommandBuilder()
@@ -723,10 +715,6 @@ const roleLevelCommand = {
     }
   }
 };
-const Discord = require("discord.js");
-const SQlite = require("better-sqlite3");
-const sql = new SQlite('./mainDB.sqlite');
-const { Client, GatewayIntentBits } = require("discord.js");
 
 const client = new Client({
   intents: [
@@ -783,8 +771,8 @@ const setLevelCommand = {
             }
         }
     }
-}const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const fetch = require('node-fetch');
+}
+  
 
 const zukoYoutubeCommand = {
   data: new SlashCommandBuilder()
