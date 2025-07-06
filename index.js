@@ -1,27 +1,24 @@
-if (typeof ReadableStream === 'undefined') {
 const { ReadableStream } = require('web-streams-polyfill');
-  global.ReadableStream = ReadableStream;
-}
-
-
-
-const { Client, GatewayIntentBits, Partials, Collection, Events, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { readdirSync } = require('fs');
 const { join } = require('path');
 const express = require('express');
 const SQLite = require('better-sqlite3');
 const fetch = require('node-fetch');
 const config = require('./config.json');
+  const command = require(`./commands/${file}`);
+if (typeof ReadableStream === 'undefined') {
+  global.ReadableStream = ReadableStream;
+}
 
 
-const sql = new SQLite('./mainDB.sqlite');
-const app = express();
-const port = process.env.PORT || 3000;
+
+
+
 
 app.get('/', (_, res) => res.send('Bot is alive!'));
 app.listen(port, () => console.log(`Web server listening on port ${port}`));
 
-const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
@@ -32,13 +29,10 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const talkedRecently = new Map();
 
 
 // Load commands from ./commands
-const commandFiles = readdirSync(join(__dirname, 'commands')).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
   if ('data' in command && 'execute' in command) {
     client.commands.set(command.data.name, command);
   }
@@ -64,7 +58,6 @@ function initializeDatabase() {
 client.once(Events.ClientReady, () => {
   console.log(`Logged in as ${client.user.tag}`);
   
-   const activities = [
     { name: 'Uncle making tea', type: 3 },
     { name: '/help', type: 3 },     // Watching
   ];
@@ -73,7 +66,6 @@ client.once(Events.ClientReady, () => {
 
   // Function to update activity
   function updateActivity() {
-    const activity = activities[currentIndex];
     client.user.setActivity(activity.name, { type: activity.type });
 
     // Move to the next activity
@@ -89,7 +81,6 @@ client.once(Events.ClientReady, () => {
 // Slash Command Handling
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
-  const command = client.commands.get(interaction.commandName);
   if (!command) return;
 
   try {
@@ -100,11 +91,99 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
-const fs = require('fs');
 
-// ==== Commandes fusionnées depuis commands.js ====
+function updateUserJSON(guildId) {
+  if (!users.length) return;
 
-const commands = {
+    return {
+      rank: index + 1,
+      userId: entry.user,
+      level: entry.level,
+      xp: entry.xp,
+      totalXP: entry.totalXP,
+      nextXP
+    };
+  });
+
+  fs.writeFileSync('./users.json', JSON.stringify(leaderboard, null, 2));
+}
+
+
+// Message-based XP System
+client.on(Events.MessageCreate, async message => {
+  if (message.author.bot || !message.guild) return;
+
+  let level = client.getLevel.get(message.author.id, message.guild.id);
+  if (!level) {
+    sql.prepare("INSERT OR REPLACE INTO levels (id, user, guild, xp, level, totalXP) VALUES (?, ?, ?, ?, ?, ?)").run(
+      `${message.author.id}-${message.guild.id}`, message.author.id, message.guild.id, 0, 0, 0
+    );
+    return;
+  }
+
+
+  level.xp += xpGain;
+  level.totalXP += xpGain;
+
+  if (level.xp >= nextLevelXp) {
+    level.xp -= nextLevelXp;
+    level.level += 1;
+
+  `🔥 ${message.author} reached **Level ${level.level}**... and honestly? That's one step closer to *finally* getting Dad to say "good job" — maybe.`,
+  `🔥 **Level ${level.level}**?! Are you kidding me?! You're actually doing it! You’re… not a disappointment?!`,
+  `🔥 ${message.author}, **Level ${level.level}**… You’re leveling up faster than my emotional damage.`,
+  `🔥 I didn’t banish myself for *nothing!* Keep going. **Level ${level.level}**.`,
+  `🔥 **Level ${level.level}**. That’s not just progress. That’s *growth*. Disgusting. I’m proud of you.`,
+  `🔥 ${message.author}, you hit **Level ${level.level}** and no one even had to throw lightning at you. Impressive.`,
+  `🔥 **Level ${level.level}**. Azula’s shaking in her boots. And they’re *very expensive* boots.`,
+  `🔥 I spent *years* chasing the Avatar... you're out here chasing **Level ${level.level}** like it owes you money. Respect.`,
+  `🔥 ${message.author}, you did not wake up and choose peace. You chose VIOLENCE. **Level ${level.level}**.`,
+  `🔥 **Level ${level.level}**. You’ve burned through doubt, fear, and probably your eyebrows. Keep it up.`,
+  `🔥 Listen... I used to think honor came from my father. But you? You just got it from **Level ${level.level}**. Even better.`,
+  `🔥 ${message.author}, if I had a gold coin for every level you gained… I could finally open my own tea shop. **Level ${level.level}**.`,
+  `🔥 **Level ${level.level}**. You’re on fire! Like literally. Are you okay? Is that smoke??`,
+  `🔥 Wow. **Level ${level.level}**. I haven't been this surprised since Uncle Iroh told me tea wasn't dinner.`,
+  `🔥 ${message.author}, you're hotter than blue fire right now! **Level ${level.level}** and rising!`,
+  `🔥 **Level ${level.level}**. You've unlocked something powerful. Maybe... self-worth?! GASP.`,
+  `🔥 You’ve come a long way from yelling at clouds. **Level ${level.level}** looks good on you.`,
+  `🔥 **Level ${level.level}**. You didn’t find yourself — you *built* yourself. Like a firebender with IKEA instructions.`,
+  `🔥 You’re not just leveling up, ${message.author}. You’re rewriting your whole redemption arc. **Level ${level.level}**!`,
+  `🔥 Every level leaves a scar. But this one? This one looks kinda badass. Wear it proud. **Level ${level.level}**.`
+];
+
+
+
+message.reply(zukoMessage);
+
+
+
+// Find matching role for the new level
+if (matchingRole) {
+  if (role && !member.roles.cache.has(role.id)) {
+    // Remove all lower-level roles listed in the file
+    for (const r of lowerRoles) {
+      if (oldRole && member.roles.cache.has(oldRole.id)) {
+        await member.roles.remove(oldRole).catch(console.error);
+      }
+    }
+
+    await member.roles.add(role.id).catch(console.error);
+    await message.author.send(`A secret message from my uncle: Congratulations my friend! You've reached **Level ${level.level}** and received the title **${role.name}**!`).catch(() => {});
+  }
+}
+
+  }
+
+  client.setLevel.run(level);
+  updateUserJSON(message.guild.id);
+  talkedRecently.set(message.author.id, Date.now() + 10 * 1000);
+  setTimeout(() => talkedRecently.delete(message.author.id), 10 * 1000);
+});
+
+client.login(config.token);
+
+// Commande intégrée depuis commands.js
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('add-level')
     .setDescription('Give or add a level to a specified user')
@@ -161,8 +240,9 @@ const commands = {
     return interaction.reply({ embeds: [embed] });
   }
 };
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
-const commands = {
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('help')
     .setDescription('Display help information for all commands or a specific command')
@@ -218,8 +298,11 @@ const commands = {
     return interaction.reply({ embeds: [detailsEmbed], ephemeral: true });
   }
 };
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
 
-const commands = {
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('leaderboard')
     .setDescription('Check top users with the most XP and the highest level'),
@@ -306,7 +389,7 @@ const buildEmbed = async (page) => {
       }
     });
   }
-};
+};const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
 
 const SENTENCES = [
   "Here's something for you!",
@@ -319,7 +402,7 @@ const CHANNEL_ID = '1014249897756729454';
 const ROLE_ID = '964096791178010635';
 const OWNER_ID = '707124653482836009';
 
-const commands = {
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('life-advice')
     .setDescription('Owner-only: Posts a provided photo URL to a specific channel.')
@@ -357,9 +440,11 @@ const commands = {
       return interaction.editReply({ content: "❌ Failed to send the photo." });
     }
   }
-};
+};const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
 
-const commands = {
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('set-prefix')
     .setDescription('Set a custom server prefix for commands')
@@ -389,9 +474,11 @@ const commands = {
     return interaction.reply(`✅ Server prefix is now set to \`${newPrefix}\``);
   }
 };
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
 
-
-const commands = {
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('rank')
     .setDescription("Check a user's rank and XP")
@@ -442,9 +529,11 @@ const commands = {
     }
   }
 };
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
 
-
-const commands = {
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('remove-level')
     .setDescription('Remove or decrease level from a specified user')
@@ -496,8 +585,11 @@ const commands = {
     return interaction.reply({ embeds: [embed] });
   }
 };
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
 
-const commands = {
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('resetrank')
     .setDescription('Resets the rank (level and XP) of everyone in the server.')
@@ -522,8 +614,11 @@ const commands = {
     }
   }
 };
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const SQLite = require('better-sqlite3');
+const sql = new SQLite('./mainDB.sqlite');
 
-const commands = {
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('role-level')
     .setDescription('Manage role rewards for specific levels')
@@ -620,6 +715,10 @@ const commands = {
     }
   }
 };
+const Discord = require("discord.js");
+const SQlite = require("better-sqlite3");
+const sql = new SQlite('./mainDB.sqlite');
+const { Client, GatewayIntentBits } = require("discord.js");
 
 const client = new Client({
   intents: [
@@ -629,7 +728,7 @@ const client = new Client({
   ]
 });
 
-const commands = {
+const addLevelCommand = {
     name: 'set-level',
     aliases: ['levelset'],
     category: "Leveling",
@@ -676,10 +775,10 @@ const commands = {
             }
         }
     }
-}
+}const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
-const commands = {
+const addLevelCommand = {
   data: new SlashCommandBuilder()
     .setName('zukoyoutube')
     .setDescription('Fetch the latest YouTube video from Uncle Iroh\'s channel'),
@@ -756,106 +855,19 @@ const commands = {
 };
 
 
+// Initialiser la collection des commandes si ce n’est pas déjà fait
+if (!client.commands) client.commands = new Collection();
+client.commands.set(addLevelCommand.data.name, addLevelCommand);
 
-function updateUserJSON(guildId) {
-  const users = sql.prepare("SELECT * FROM levels WHERE guild = ? ORDER BY totalXP DESC").all(guildId);
-  if (!users.length) return;
-
-  const leaderboard = users.map((entry, index) => {
-    const nextXP = entry.level * 2 * 250 + 250;
-    return {
-      rank: index + 1,
-      userId: entry.user,
-      level: entry.level,
-      xp: entry.xp,
-      totalXP: entry.totalXP,
-      nextXP
-    };
-  });
-
-  fs.writeFileSync('./users.json', JSON.stringify(leaderboard, null, 2));
-}
-
-
-// Message-based XP System
-client.on(Events.MessageCreate, async message => {
-  if (message.author.bot || !message.guild) return;
-
-  let level = client.getLevel.get(message.author.id, message.guild.id);
-  if (!level) {
-    sql.prepare("INSERT OR REPLACE INTO levels (id, user, guild, xp, level, totalXP) VALUES (?, ?, ?, ?, ?, ?)").run(
-      `${message.author.id}-${message.guild.id}`, message.author.id, message.guild.id, 0, 0, 0
-    );
-    return;
+// Gérer les interactions pour SlashCommands
+client.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isCommand()) return;
+  const command = client.commands.get(interaction.commandName);
+  if (!command) return;
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(error);
+    await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
   }
-
-  const xpGain = Math.floor(Math.random() * 400) + 100;
-  const nextLevelXp = level.level * 2 * 250 + 250;
-
-  level.xp += xpGain;
-  level.totalXP += xpGain;
-
-  if (level.xp >= nextLevelXp) {
-    level.xp -= nextLevelXp;
-    level.level += 1;
-
-const zukoQuotes = [
-  `🔥 ${message.author} reached **Level ${level.level}**... and honestly? That's one step closer to *finally* getting Dad to say "good job" — maybe.`,
-  `🔥 **Level ${level.level}**?! Are you kidding me?! You're actually doing it! You’re… not a disappointment?!`,
-  `🔥 ${message.author}, **Level ${level.level}**… You’re leveling up faster than my emotional damage.`,
-  `🔥 I didn’t banish myself for *nothing!* Keep going. **Level ${level.level}**.`,
-  `🔥 **Level ${level.level}**. That’s not just progress. That’s *growth*. Disgusting. I’m proud of you.`,
-  `🔥 ${message.author}, you hit **Level ${level.level}** and no one even had to throw lightning at you. Impressive.`,
-  `🔥 **Level ${level.level}**. Azula’s shaking in her boots. And they’re *very expensive* boots.`,
-  `🔥 I spent *years* chasing the Avatar... you're out here chasing **Level ${level.level}** like it owes you money. Respect.`,
-  `🔥 ${message.author}, you did not wake up and choose peace. You chose VIOLENCE. **Level ${level.level}**.`,
-  `🔥 **Level ${level.level}**. You’ve burned through doubt, fear, and probably your eyebrows. Keep it up.`,
-  `🔥 Listen... I used to think honor came from my father. But you? You just got it from **Level ${level.level}**. Even better.`,
-  `🔥 ${message.author}, if I had a gold coin for every level you gained… I could finally open my own tea shop. **Level ${level.level}**.`,
-  `🔥 **Level ${level.level}**. You’re on fire! Like literally. Are you okay? Is that smoke??`,
-  `🔥 Wow. **Level ${level.level}**. I haven't been this surprised since Uncle Iroh told me tea wasn't dinner.`,
-  `🔥 ${message.author}, you're hotter than blue fire right now! **Level ${level.level}** and rising!`,
-  `🔥 **Level ${level.level}**. You've unlocked something powerful. Maybe... self-worth?! GASP.`,
-  `🔥 You’ve come a long way from yelling at clouds. **Level ${level.level}** looks good on you.`,
-  `🔥 **Level ${level.level}**. You didn’t find yourself — you *built* yourself. Like a firebender with IKEA instructions.`,
-  `🔥 You’re not just leveling up, ${message.author}. You’re rewriting your whole redemption arc. **Level ${level.level}**!`,
-  `🔥 Every level leaves a scar. But this one? This one looks kinda badass. Wear it proud. **Level ${level.level}**.`
-];
-
-
-
-const zukoMessage = zukoQuotes[Math.floor(Math.random() * zukoQuotes.length)];
-message.reply(zukoMessage);
-
-
-    const member = message.member;
-const roleLevels = JSON.parse(fs.readFileSync('./rolelevels.json', 'utf8'));
-
-// Find matching role for the new level
-const matchingRole = roleLevels.find(r => r.level === level.level);
-if (matchingRole) {
-  const role = message.guild.roles.cache.get(matchingRole.roleId);
-  if (role && !member.roles.cache.has(role.id)) {
-    // Remove all lower-level roles listed in the file
-    const lowerRoles = roleLevels.filter(r => r.level < level.level);
-    for (const r of lowerRoles) {
-      const oldRole = message.guild.roles.cache.get(r.roleId);
-      if (oldRole && member.roles.cache.has(oldRole.id)) {
-        await member.roles.remove(oldRole).catch(console.error);
-      }
-    }
-
-    await member.roles.add(role.id).catch(console.error);
-    await message.author.send(`A secret message from my uncle: Congratulations my friend! You've reached **Level ${level.level}** and received the title **${role.name}**!`).catch(() => {});
-  }
-}
-
-  }
-
-  client.setLevel.run(level);
-  updateUserJSON(message.guild.id);
-  talkedRecently.set(message.author.id, Date.now() + 10 * 1000);
-  setTimeout(() => talkedRecently.delete(message.author.id), 10 * 1000);
 });
-
-client.login(process.env.DISCORD_TOKEN);
