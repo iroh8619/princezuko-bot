@@ -53,6 +53,31 @@ async function updateUserJSONOnGitHub(guildId) {
   }
 }
 
+async function restoreSQLiteFromGitHub() {
+  const repo = 'iroh8619/princezuko-bot';
+  const file = 'users.json';
+  const token = process.env.GITHUB_TOKEN;
+
+  const response = await fetch(`https://api.github.com/repos/${repo}/contents/${file}`, {
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: 'application/vnd.github.v3.raw'
+    }
+  });
+
+  const data = await response.json();
+  const users = Array.isArray(data) ? data : JSON.parse(data);
+
+  const db = new sqlite('./mainDB.sqlite');
+  const stmt = db.prepare('INSERT OR REPLACE INTO levels (id, user, guild, xp, level, totalXP) VALUES (?, ?, ?, ?, ?, ?)');
+
+  for (const u of users) {
+    const id = `${u.userId}-YOUR_GUILD_ID_HERE`;
+    stmt.run(id, u.userId, 'YOUR_GUILD_ID_HERE', u.xp, u.level, u.totalXP);
+  }
+
+  console.log('✅ Database restored from GitHub users.json');
+}
 
 const sql = new SQLite('./mainDB.sqlite');
 const app = express();
