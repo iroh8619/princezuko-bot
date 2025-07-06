@@ -251,7 +251,6 @@ const addLevelCommand = {
     return interaction.reply({ embeds: [embed] });
   }
 };
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 const addLevelCommand = {
   data: new SlashCommandBuilder()
