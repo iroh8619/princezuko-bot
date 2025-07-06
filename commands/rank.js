@@ -45,7 +45,7 @@ module.exports = {
         .setFooter({ text: `Server: ${interaction.guild.name}`, iconURL: interaction.guild.iconURL({ dynamic: true }) })
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.editReply({ embeds: [embed] });
 
     } catch (error) {
       console.error("An error occurred in the rank command:", error);
