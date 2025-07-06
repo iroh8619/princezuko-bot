@@ -308,7 +308,7 @@ const helpCommand = {
     return interaction.reply({ embeds: [detailsEmbed], ephemeral: true });
   }
 };
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const SQLite = require('better-sqlite3');
 const sql = new SQLite('./mainDB.sqlite');
 
