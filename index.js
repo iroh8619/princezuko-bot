@@ -103,8 +103,6 @@ client.on(Events.InteractionCreate, async interaction => {
 const fs = require('fs');
 
 // ==== Commandes fusionnées depuis commands.js ====
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
 
 const commands = {
   data: new SlashCommandBuilder()
@@ -163,7 +161,6 @@ const commands = {
     return interaction.reply({ embeds: [embed] });
   }
 };
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 const commands = {
   data: new SlashCommandBuilder()
@@ -221,9 +218,6 @@ const commands = {
     return interaction.reply({ embeds: [detailsEmbed], ephemeral: true });
   }
 };
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
 
 const commands = {
   data: new SlashCommandBuilder()
@@ -312,7 +306,7 @@ const buildEmbed = async (page) => {
       }
     });
   }
-};const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
+};
 
 const SENTENCES = [
   "Here's something for you!",
@@ -363,9 +357,7 @@ const commands = {
       return interaction.editReply({ content: "❌ Failed to send the photo." });
     }
   }
-};const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
+};
 
 const commands = {
   data: new SlashCommandBuilder()
@@ -397,9 +389,7 @@ const commands = {
     return interaction.reply(`✅ Server prefix is now set to \`${newPrefix}\``);
   }
 };
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
+
 
 const commands = {
   data: new SlashCommandBuilder()
@@ -452,9 +442,7 @@ const commands = {
     }
   }
 };
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
+
 
 const commands = {
   data: new SlashCommandBuilder()
@@ -508,9 +496,6 @@ const commands = {
     return interaction.reply({ embeds: [embed] });
   }
 };
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
 
 const commands = {
   data: new SlashCommandBuilder()
@@ -537,9 +522,6 @@ const commands = {
     }
   }
 };
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
-const SQLite = require('better-sqlite3');
-const sql = new SQLite('./mainDB.sqlite');
 
 const commands = {
   data: new SlashCommandBuilder()
@@ -638,10 +620,6 @@ const commands = {
     }
   }
 };
-const Discord = require("discord.js");
-const SQlite = require("better-sqlite3");
-const sql = new SQlite('./mainDB.sqlite');
-const { Client, GatewayIntentBits } = require("discord.js");
 
 const client = new Client({
   intents: [
@@ -698,7 +676,7 @@ const commands = {
             }
         }
     }
-}const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+}
 const fetch = require('node-fetch');
 
 const commands = {
