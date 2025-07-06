@@ -309,7 +309,6 @@ const helpCommand = {
   }
 };
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const SQLite = require('better-sqlite3');
 const sql = new SQLite('./mainDB.sqlite');
 
 const leaderboardCommand = {
