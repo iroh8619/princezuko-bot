@@ -37,14 +37,6 @@ const client = new Client({
 // Initialisation des commandes
 client.commands = new Collection();
 
-
-// Load commands from ./commands
-for (const file of commandFiles) {
-  if ('data' in command && 'execute' in command) {
-    client.commands.set(command.data.name, command);
-  }
-}
-
 // Database table creation
 function initializeDatabase() {
   if (!sql.prepare(`SELECT count(*) FROM sqlite_master WHERE type='table' AND name='levels'`).get()['count(*)']) {
