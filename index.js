@@ -103,7 +103,6 @@ client.on(Events.InteractionCreate, async interaction => {
 const fs = require('fs');
 
 // ==== Commandes fusionnées depuis commands.js ====
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const SQLite = require('better-sqlite3');
 const sql = new SQLite('./mainDB.sqlite');
 
