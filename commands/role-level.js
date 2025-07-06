@@ -41,7 +41,7 @@ module.exports = {
       const role = interaction.options.getRole('role');
 
       if (level < 1) {
-        return interaction.reply({ content: 'Please provide a valid level (1 or higher).', ephemeral: true });
+        return interaction.editReply({ content: 'Please provide a valid level (1 or higher).', ephemeral: true });
       }
 
       const getRole = sql.prepare("SELECT * FROM roles WHERE guildID = ? AND level = ?");
@@ -56,7 +56,7 @@ module.exports = {
         .setDescription(`${role} has been ${action} for level ${level}.`)
         .setColor('Random');
 
-      return interaction.reply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed] });
     }
 
     if (sub === 'remove') {
@@ -65,7 +65,7 @@ module.exports = {
       const found = getLevel.get(guildId, level);
 
       if (!found) {
-        return interaction.reply({ content: 'There is no role set for that level.', ephemeral: true });
+        return interaction.editReply({ content: 'There is no role set for that level.', ephemeral: true });
       }
 
       const del = sql.prepare("DELETE FROM roles WHERE guildID = ? AND level = ?");
@@ -76,14 +76,14 @@ module.exports = {
         .setDescription(`Role reward for level ${level} has been removed.`)
         .setColor('Random');
 
-      return interaction.reply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed] });
     }
 
     if (sub === 'show') {
       const all = sql.prepare("SELECT * FROM roles WHERE guildID = ?").all(guildId);
 
       if (!all.length) {
-        return interaction.reply({ content: 'There are no level-role rewards set in this server.', ephemeral: true });
+        return interaction.editReply({ content: 'There are no level-role rewards set in this server.', ephemeral: true });
       }
 
       const embed = new EmbedBuilder()
@@ -95,7 +95,7 @@ module.exports = {
         embed.addFields({ name: `Level ${row.level}`, value: `<@&${row.roleID}>`, inline: true });
       });
 
-      return interaction.reply({ embeds: [embed] });
+      return interaction.editReply({ embeds: [embed] });
     }
   }
 };
