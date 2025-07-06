@@ -139,6 +139,7 @@ client.on(Events.MessageCreate, async message => {
     level.xp -= nextLevelXp;
     level.level += 1;
 
+const zukoMessage = [
   `🔥 ${message.author} reached **Level ${level.level}**... and honestly? That's one step closer to *finally* getting Dad to say "good job" — maybe.`,
   `🔥 **Level ${level.level}**?! Are you kidding me?! You're actually doing it! You’re… not a disappointment?!`,
   `🔥 ${message.author}, **Level ${level.level}**… You’re leveling up faster than my emotional damage.`,
