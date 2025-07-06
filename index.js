@@ -848,7 +848,7 @@ client.commands.set(rankCommand.data.name, rankCommand);
 client.commands.set(removeLevelCommand.data.name, removeLevelCommand);
 client.commands.set(resetRankCommand.data.name, resetRankCommand);
 client.commands.set(roleLevelCommand.data.name, roleLevelCommand);
-client.commands.set(setLevelCommand.data.name, setLevelCommand);
+//client.commands.set(setLevelCommand.data.name, setLevelCommand);
 client.commands.set(zukoYoutubeCommand.data.name, zukoYoutubeCommand);
 
 
