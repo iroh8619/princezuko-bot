@@ -33,6 +33,7 @@ module.exports = {
         .setDescription('Show all level-based role rewards')),
 
   async execute(interaction) {
+    await interaction.deferReply();
     const sub = interaction.options.getSubcommand();
     const guildId = interaction.guild.id;
 
