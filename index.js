@@ -716,13 +716,7 @@ const roleLevelCommand = {
   }
 };
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMembers
-  ]
-});
+
 
 const setLevelCommand = {
     name: 'set-level',
