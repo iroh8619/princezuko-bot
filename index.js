@@ -61,9 +61,6 @@ function initializeDatabase() {
 }
 
 
-client.once(Events.ClientReady, () => {
-  console.log(`Logged in as ${client.user.tag}`);
-  
 const activities = [
   { name: 'Uncle making tea', type: 3 },
   { name: '/help', type: 3 },
@@ -86,6 +83,7 @@ client.once(Events.ClientReady, () => {
 });
 
 
+
 // Slash Command Handling
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
@@ -101,8 +99,10 @@ client.on(Events.InteractionCreate, async interaction => {
 
 
 function updateUserJSON(guildId) {
-  if (!users.length) return;
+  if (!users?.length) return;
 
+  const leaderboard = users.map((entry, index) => {
+    const nextXP = calculateNextXP(entry.level); // You must define this
     return {
       rank: index + 1,
       userId: entry.user,
@@ -115,6 +115,7 @@ function updateUserJSON(guildId) {
 
   fs.writeFileSync('./users.json', JSON.stringify(leaderboard, null, 2));
 }
+
 
 
 // Message-based XP System
