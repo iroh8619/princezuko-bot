@@ -13,6 +13,46 @@ const SQLite = require('better-sqlite3');
 const fetch = require('node-fetch');
 const config = require('./config.json');
 
+async function updateUserJSONOnGitHub(guildId) {
+  const users = sql
+    .prepare("SELECT * FROM levels WHERE guild = ? ORDER BY totalXP DESC")
+    .all(guildId);
+  if (!users.length) return;
+
+  const leaderboard = users.map((entry, i) => {
+    const nextXP = entry.level * 2 * 250 + 250;
+    return {
+      rank: i + 1,
+      userId: entry.user,
+      level: entry.level,
+      xp: entry.xp,
+      totalXP: entry.totalXP,
+      nextXP
+    };
+  });
+
+  const content = Buffer.from(JSON.stringify(leaderboard, null, 2)).toString('base64');
+  const repo = 'iroh8619/zuko-bot';
+  const path = 'users.json';
+  const token = process.env.GITHUB_TOKEN;
+
+  try {
+    const gitRes = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
+    });
+    const { sha } = await gitRes.json();
+
+    await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+      method: 'PUT',
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' },
+      body: JSON.stringify({ message: 'Update users.json', content, sha })
+    });
+    console.log('✅ users.json pushed to GitHub');
+  } catch (err) {
+    console.error('❌ GitHub sync failed:', err);
+  }
+}
+
 
 const sql = new SQLite('./mainDB.sqlite');
 const app = express();
@@ -199,6 +239,7 @@ if (matchingRole) {
 
   client.setLevel.run(level);
   updateUserJSON(message.guild.id);
+  updateUserJSONOnGitHub(message.guild.id);
   talkedRecently.set(message.author.id, Date.now() + 10 * 1000);
   setTimeout(() => talkedRecently.delete(message.author.id), 10 * 1000);
 });
