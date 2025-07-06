@@ -58,26 +58,30 @@ async function restoreSQLiteFromGitHub() {
   const file = 'users.json';
   const token = process.env.GITHUB_TOKEN;
 
-  const response = await fetch(`https://api.github.com/repos/${repo}/contents/${file}`, {
-    headers: {
-      Authorization: `token ${token}`,
-      Accept: 'application/vnd.github.v3.raw'
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repo}/contents/${file}`, {
+      headers: {
+        Authorization: `token ${token}`,
+        Accept: 'application/vnd.github.v3.raw'
+      }
+    });
+
+    const data = await response.json();
+    const users = Array.isArray(data) ? data : JSON.parse(data);
+
+    const stmt = sql.prepare('INSERT OR REPLACE INTO levels (id, user, guild, xp, level, totalXP) VALUES (?, ?, ?, ?, ?, ?)');
+
+    for (const u of users) {
+      const id = `${u.userId}-905876133151637575`;
+      stmt.run(id, u.userId, '905876133151637575', u.xp, u.level, u.totalXP);
     }
-  });
 
-  const data = await response.json();
-  const users = Array.isArray(data) ? data : JSON.parse(data);
-
-  const db = new sqlite('./mainDB.sqlite');
-  const stmt = db.prepare('INSERT OR REPLACE INTO levels (id, user, guild, xp, level, totalXP) VALUES (?, ?, ?, ?, ?, ?)');
-
-  for (const u of users) {
-    const id = `${u.userId}-YOUR_GUILD_ID_HERE`;
-    stmt.run(id, u.userId, 'YOUR_GUILD_ID_HERE', u.xp, u.level, u.totalXP);
+    console.log('✅ Database restored from GitHub users.json');
+  } catch (err) {
+    console.error('❌ Failed to restore database from GitHub:', err.message);
   }
-
-  console.log('✅ Database restored from GitHub users.json');
 }
+
 
 const sql = new SQLite('./mainDB.sqlite');
 const app = express();
@@ -126,8 +130,17 @@ function initializeDatabase() {
 }
 
 
-client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
   console.log(`Logged in as ${client.user.tag}`);
+
+  const row = sql.prepare("SELECT COUNT(*) AS count FROM levels").get();
+  if (row.count === 0) {
+    console.log("🔁 Restoring levels from GitHub...");
+    await restoreSQLiteFromGitHub();
+  }
+
+  initializeDatabase();
+
   
    const activities = [
     { name: 'Uncle making tea', type: 3 },
@@ -148,7 +161,6 @@ client.once(Events.ClientReady, () => {
   // Set initial activity and then alternate every 10 seconds
   updateActivity();
   setInterval(updateActivity, 10000);
-  initializeDatabase();
 });
 
 // Slash Command Handling
@@ -268,8 +280,7 @@ if (matchingRole) {
 
   client.setLevel.run(level);
   updateUserJSON(message.guild.id);
-  await updateUserJSONOnGitHub(guild.id)
-  updateUserJSONOnGitHub(message.guild.id);
+  await updateUserJSONOnGitHub(message.guild.id);
   talkedRecently.set(message.author.id, Date.now() + 10 * 1000);
   setTimeout(() => talkedRecently.delete(message.author.id), 10 * 1000);
 });
