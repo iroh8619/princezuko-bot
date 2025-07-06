@@ -32,7 +32,7 @@ async function updateUserJSONOnGitHub(guildId) {
   });
 
   const content = Buffer.from(JSON.stringify(leaderboard, null, 2)).toString('base64');
-  const repo = 'iroh8619/zuko-bot';
+  const repo = 'iroh8619/princezuko-bot';
   const path = 'users.json';
   const token = process.env.GITHUB_TOKEN;
 
