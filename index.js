@@ -133,10 +133,14 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!command) return;
 
   try {
+    await interaction.deferReply(); // ✅ tout de suite
     await command.execute(interaction, sql);
-  } catch (error) {
-    console.error(error);
-    await interaction.reply({ content: 'There was an error executing this command.', ephemeral: true });
+  } catch (err) {
+    console.error(err);
+    await interaction.editReply({
+      content: 'Une erreur est survenue, désolé…',
+      ephemeral: true
+    });
   }
 });
 
