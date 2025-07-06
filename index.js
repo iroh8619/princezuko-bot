@@ -64,25 +64,27 @@ function initializeDatabase() {
 client.once(Events.ClientReady, () => {
   console.log(`Logged in as ${client.user.tag}`);
   
-    { name: 'Uncle making tea', type: 3 },
-    { name: '/help', type: 3 },     // Watching
-  ];
+const activities = [
+  { name: 'Uncle making tea', type: 3 },
+  { name: '/help', type: 3 },
+];
 
+client.once(Events.ClientReady, () => {
+  console.log(`Logged in as ${client.user.tag}`);
+  
   let currentIndex = 0;
 
-  // Function to update activity
   function updateActivity() {
+    const activity = activities[currentIndex];
     client.user.setActivity(activity.name, { type: activity.type });
-
-    // Move to the next activity
     currentIndex = (currentIndex + 1) % activities.length;
   }
 
-  // Set initial activity and then alternate every 10 seconds
   updateActivity();
   setInterval(updateActivity, 10000);
   initializeDatabase();
 });
+
 
 // Slash Command Handling
 client.on(Events.InteractionCreate, async interaction => {
